@@ -11,7 +11,7 @@ from googleapiclient.discovery import build
 
 from fast_bitrix24 import Bitrix
 
-app = Flask(__name__)
+application = Flask(__name__)
 
 webhook = "https://b24-w85wk0.bitrix24.ru/rest/1/xidf2hj139aobv1l/"
 
@@ -53,7 +53,7 @@ if not creds or not creds.valid:
         token.write(creds.to_json())
 
 
-@app.route('/run.py', methods=['POST'])
+@application.route('/run.py', methods=['POST'])
 def run_script():
 
     deal_id = int(request.values.get('document_id[2]')[5:])
@@ -85,7 +85,7 @@ def run_script():
     return {'result': 'ok'}, 200
 
 
-@app.route('/update.py', methods=['POST'])
+@application.route('/update.py', methods=['POST'])
 def update_script():
 
     title = request.args.get('t', default='...')
@@ -130,5 +130,5 @@ def execute_google_script(script_id, function_name, parameters):
 
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    application.run(debug=True)
 
