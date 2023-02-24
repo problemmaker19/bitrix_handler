@@ -1,7 +1,6 @@
 import logging
 import os
 
-import cachetools
 from flask import Flask, request
 
 from google.auth.transport.requests import Request
@@ -17,7 +16,7 @@ webhook = "https://b24-w85wk0.bitrix24.ru/rest/1/xidf2hj139aobv1l/"
 
 b = Bitrix(webhook)
 
-#logging.getLogger('fast_bitrix24').addHandler(logging.StreamHandler())
+logging.getLogger('fast_bitrix24').addHandler(logging.StreamHandler())
 
 client_id = '623060660436-r421fr9t98j0s40pl5o28m169gmm7cr4.apps.googleusercontent.com'
 
@@ -74,13 +73,11 @@ def run_script():
     script_id = '1s8h3RG4VPGYyc1vnNChkpondgzHioXp6MSK5GoGUtAtZaWRoAJc0OKnj'
     function_name = 'FillTemplate'
     parameters = [title, contract_num, customer, date, phone, address, subject, comments, editor_email, viewer_email, helper_email]
-    try:
-        result = execute_google_script(script_id, function_name, parameters)
+    result = execute_google_script(script_id, function_name, parameters)
 
-        params = {"ID": deal_id, "fields": {"UF_CRM_1676419853": result}}
-        b.call('crm.deal.update', params, raw=True)
-    except Exception as e:
-        raise Exception(e)
+    params = {"ID": deal_id, "fields": {"UF_CRM_1676419853": result}}
+    b.call('crm.deal.update', params, raw=True)
+
 
     return {'result': 'ok'}, 200
 
@@ -103,12 +100,14 @@ def update_script():
     script_id = '1s8h3RG4VPGYyc1vnNChkpondgzHioXp6MSK5GoGUtAtZaWRoAJc0OKnj'
     function_name = 'UpdateSheet'
     parameters = [title, contract_num, customer, date, phone, address, subject, comments, spreadsheet_id]
-    try:
-        execute_google_script(script_id, function_name, parameters)
-    except Exception as e:
-        raise Exception(e)
+    execute_google_script(script_id, function_name, parameters)
 
     return {'result': 'ok'}, 200
+
+
+@application.route('/', methods=['GET'])
+def check_connection():
+    return 'Hello daddy'
 
 
 def execute_google_script(script_id, function_name, parameters):
