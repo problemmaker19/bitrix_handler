@@ -12,7 +12,7 @@ from fast_bitrix24 import Bitrix
 
 application = Flask(__name__)
 
-webhook = "https://b24-w85wk0.bitrix24.ru/rest/1/xidf2hj139aobv1l/"
+webhook = "https://b24-cin4zj.bitrix24.ru/rest/1/wo01jgf7p5kw42u0/"
 
 b = Bitrix(webhook)
 
@@ -23,11 +23,11 @@ client_id = '623060660436-r421fr9t98j0s40pl5o28m169gmm7cr4.apps.googleuserconten
 client_secret = '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'
 
 SCOPES = [
-            'https://www.googleapis.com/auth/script.projects',
-            'https://www.googleapis.com/auth/drive',
-            'https://www.googleapis.com/auth/documents',
-            'https://www.googleapis.com/auth/spreadsheets'
-        ]
+    'https://www.googleapis.com/auth/script.projects',
+    'https://www.googleapis.com/auth/drive',
+    'https://www.googleapis.com/auth/documents',
+    'https://www.googleapis.com/auth/spreadsheets'
+]
 
 creds = None
 
@@ -54,30 +54,33 @@ if not creds or not creds.valid:
 
 @application.route('/run.py', methods=['POST'])
 def run_script():
+    print('------------- CREATING ---------------')
 
     deal_id = int(request.values.get('document_id[2]')[5:])
 
-    title = request.args.get('t', default='...')
-    contract_num = request.args.get('con', default='...')
-    customer = request.args.get('cus', default='...')
-    date = request.args.get('d', default='...')
-    phone = request.args.get('p', default='...')
-    address = request.args.get('a', default='...')
-    subject = request.args.get('s', default='...')
-    comments = request.args.get('com', default='...')
-    editor_email = request.args.get('e', default='...')
-    viewer_email = request.args.get('v', default='...')
-    helper_email = request.args.get('h', default='...')
+    title = request.args.get('t', default=' ')
+    contract_num = request.args.get('con', default=' ')
+    customer = request.args.get('cus', default=' ')
+    date = request.args.get('d', default=' ')
+    phone = request.args.get('p', default=' ')
+    address = request.args.get('a', default=' ')
+    subject = request.args.get('s', default=' ')
+    comments = request.args.get('com', default=' ')
+    editor_email = request.args.get('e')
+    viewer_email = request.args.get('v')
+    helper_email = request.args.get('h')
 
     # Define the script ID, function name, and parameters
     script_id = '1s8h3RG4VPGYyc1vnNChkpondgzHioXp6MSK5GoGUtAtZaWRoAJc0OKnj'
     function_name = 'FillTemplate'
-    parameters = [title, contract_num, customer, date, phone, address, subject, comments, editor_email, viewer_email, helper_email]
+    parameters = [title, contract_num, customer, date, phone, address, subject, comments,
+                  editor_email, viewer_email, helper_email]
     result = execute_google_script(script_id, function_name, parameters)
 
-    params = {"ID": deal_id, "fields": {"UF_CRM_1676419853": result}}
+    params = {"ID": deal_id, "fields": {"UF_CRM_1677759756": result}}
     b.call('crm.deal.update', params, raw=True)
 
+    print('------------- CREATE FINISHED ---------------')
 
     return {'result': 'ok'}, 200
 
@@ -85,33 +88,45 @@ def run_script():
 @application.route('/update.py', methods=['POST'])
 def update_script():
 
-    title = request.args.get('t', default='...')
-    contract_num = request.args.get('con', default='...')
-    customer = request.args.get('cus', default='...')
-    date = request.args.get('d', default='...')
-    phone = request.args.get('p', default='...')
-    address = request.args.get('a', default='...')
-    subject = request.args.get('s', default='...')
-    comments = request.args.get('com', default='...')
-    link = request.args.get('link', default='...')
+    title = request.args.get('t', default=' ')
+    contract_num = request.args.get('con', default=' ')
+    customer = request.args.get('cus', default=' ')
+    date = request.args.get('d', default=' ')
+    phone = request.args.get('p', default=' ')
+    address = request.args.get('a', default=' ')
+    subject = request.args.get('s', default=' ')
+    comments = request.args.get('com', default=' ')
+    editor_email = request.args.get('e')
+    viewer_email = request.args.get('v')
+    helper_email = request.args.get('h')
+    link = request.args.get('link')
+
+    script_id = '1s8h3RG4VPGYyc1vnNChkpondgzHioXp6MSK5GoGUtAtZaWRoAJc0OKnj'
+
+    if not link:
+        print('------------- EMPTY LINK ---------------')
+        return {'result': 'link empty'}, 200
+
+    print('------------- UPDATING ---------------')
 
     spreadsheet_id = link[39:83]
 
-    script_id = '1s8h3RG4VPGYyc1vnNChkpondgzHioXp6MSK5GoGUtAtZaWRoAJc0OKnj'
     function_name = 'UpdateSheet'
-    parameters = [title, contract_num, customer, date, phone, address, subject, comments, spreadsheet_id]
+    parameters = [title, contract_num, customer, date, phone, address, subject, comments, spreadsheet_id, editor_email,
+                  viewer_email, helper_email]
     execute_google_script(script_id, function_name, parameters)
+
+    print('------------- UPDATE FINISHED ---------------')
 
     return {'result': 'ok'}, 200
 
 
-@application.route('/', methods=['GET'])
+@application.route('/hello', methods=['GET'])
 def check_connection():
-    return 'Hello daddy'
+    return 'РАСУЛ ШТАНЫ НАДУЛ'
 
 
 def execute_google_script(script_id, function_name, parameters):
-
     # Authenticate and build the Google Scripts service
     service = build('script', 'v1', credentials=creds)
 
@@ -130,4 +145,3 @@ def execute_google_script(script_id, function_name, parameters):
 
 if __name__ == '__main__':
     application.run(debug=True)
-
