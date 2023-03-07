@@ -1,6 +1,7 @@
 import logging
 import os
 
+from dotenv import load_dotenv
 from flask import Flask, request
 
 from google.auth.transport.requests import Request
@@ -10,17 +11,20 @@ from googleapiclient.discovery import build
 
 from fast_bitrix24 import Bitrix
 
+load_dotenv()
+
 application = Flask(__name__)
 
-webhook = "https://b24-cin4zj.bitrix24.ru/rest/1/wo01jgf7p5kw42u0/"
+webhook = os.getenv('WEBHOOK')
 
 b = Bitrix(webhook)
 
 logging.getLogger('fast_bitrix24').addHandler(logging.StreamHandler())
 
-client_id = '623060660436-r421fr9t98j0s40pl5o28m169gmm7cr4.apps.googleusercontent.com'
+client_id = os.getenv('CLIENT_ID')
 
-client_secret = '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'
+client_secret = os.getenv('CLIENT_SECRET')
+
 
 SCOPES = [
     'https://www.googleapis.com/auth/script.projects',
@@ -71,7 +75,7 @@ def run_script():
     helper_email = request.args.get('h')
 
     # Define the script ID, function name, and parameters
-    script_id = '1s8h3RG4VPGYyc1vnNChkpondgzHioXp6MSK5GoGUtAtZaWRoAJc0OKnj'
+    script_id = 'YOUR_SCRIPT_ID'
     function_name = 'FillTemplate'
     parameters = [title, contract_num, customer, date, phone, address, subject, comments,
                   editor_email, viewer_email, helper_email]
@@ -101,7 +105,7 @@ def update_script():
     helper_email = request.args.get('h')
     link = request.args.get('link')
 
-    script_id = '1s8h3RG4VPGYyc1vnNChkpondgzHioXp6MSK5GoGUtAtZaWRoAJc0OKnj'
+    script_id = 'YOUR_SCRIPT_ID'
 
     if not link:
         print('------------- EMPTY LINK ---------------')
