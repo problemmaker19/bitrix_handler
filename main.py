@@ -127,7 +127,7 @@ def update_script():
 
 @application.route('/hello', methods=['GET'])
 def check_connection():
-    return 'РАСУЛ ШТАНЫ НАДУЛ'
+    return 'РАСЛ ШТАНЫ НАДУЛ'
 
 
 def execute_google_script(script_id, function_name, parameters):
