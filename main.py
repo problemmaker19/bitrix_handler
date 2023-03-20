@@ -10,26 +10,27 @@ import google_auth_oauthlib
 from googleapiclient.discovery import build
 
 from fast_bitrix24 import Bitrix
+from googleapiclient.errors import HttpError
 
 load_dotenv()
 
-application = Flask(__name__)
-
 webhook = os.getenv('WEBHOOK')
-
-b = Bitrix(webhook)
-
-logging.getLogger('fast_bitrix24').addHandler(logging.StreamHandler())
 
 client_id = os.getenv('CLIENT_ID')
 
 client_secret = os.getenv('CLIENT_SECRET')
 
+script_id = os.getenv('SCRIPT_ID')
+
+application = Flask(__name__)
+
+b = Bitrix(webhook)
+
+logging.getLogger('fast_bitrix24').addHandler(logging.StreamHandler())
 
 SCOPES = [
     'https://www.googleapis.com/auth/script.projects',
     'https://www.googleapis.com/auth/drive',
-    'https://www.googleapis.com/auth/documents',
     'https://www.googleapis.com/auth/spreadsheets'
 ]
 
@@ -56,73 +57,68 @@ if not creds or not creds.valid:
         token.write(creds.to_json())
 
 
-@application.route('/run.py', methods=['POST'])
-def run_script():
-    print('------------- CREATING ---------------')
+@application.route('/add.py', methods=['POST'])
+def add_spreadsheet():
+    add_token = 'vfhxhztziufdhgcfwbasxj5fnpvlxipz'
 
-    deal_id = int(request.values.get('document_id[2]')[5:])
+    deal_id = request.form.get('data[FIELDS][ID]')
+    webhook_token = request.form.get('auth[application_token]')
 
-    title = request.args.get('t', default=' ')
-    contract_num = request.args.get('con', default=' ')
-    customer = request.args.get('cus', default=' ')
-    date = request.args.get('d', default=' ')
-    phone = request.args.get('p', default=' ')
-    address = request.args.get('a', default=' ')
-    subject = request.args.get('s', default=' ')
-    comments = request.args.get('com', default=' ')
-    editor_email = request.args.get('e')
-    viewer_email = request.args.get('v')
-    helper_email = request.args.get('h')
+    if add_token != webhook_token:
+        return 'invalid token', 401
 
-    # Define the script ID, function name, and parameters
-    script_id = 'YOUR_SCRIPT_ID'
-    function_name = 'FillTemplate'
-    parameters = [title, contract_num, customer, date, phone, address, subject, comments,
-                  editor_email, viewer_email, helper_email]
-    result = execute_google_script(script_id, function_name, parameters)
+    try:
+        params = {"ID": deal_id}
+        method = "crm.deal.get"
+        deal = b.call(method, params)
 
-    params = {"ID": deal_id, "fields": {"UF_CRM_1677759756": result}}
-    b.call('crm.deal.update', params, raw=True)
+        function_name = 'FillTemplate'
+        parameters = fetch_data(deal)
 
-    print('------------- CREATE FINISHED ---------------')
+        result = execute_google_script(script_id, function_name, parameters)
 
-    return {'result': 'ok'}, 200
+        params = {"ID": deal_id, "fields": {"UF_CRM_1679160281": result}}
+        b.call('crm.deal.update', params)
+
+        return {'result': 'ok'}, 200
+
+    except HttpError as error:
+        print(f"An error occurred: {error}")
+        return error
 
 
 @application.route('/update.py', methods=['POST'])
-def update_script():
+def update_spreadsheet():
+    update_token = 'e6z78vd5qjqqb1u6ljefyazrblfa7taq'
 
-    title = request.args.get('t', default=' ')
-    contract_num = request.args.get('con', default=' ')
-    customer = request.args.get('cus', default=' ')
-    date = request.args.get('d', default=' ')
-    phone = request.args.get('p', default=' ')
-    address = request.args.get('a', default=' ')
-    subject = request.args.get('s', default=' ')
-    comments = request.args.get('com', default=' ')
-    editor_email = request.args.get('e')
-    viewer_email = request.args.get('v')
-    helper_email = request.args.get('h')
-    link = request.args.get('link')
+    deal_id = request.form.get('data[FIELDS][ID]')
+    webhook_token = request.form.get('auth[application_token]')
 
-    script_id = 'YOUR_SCRIPT_ID'
+    if update_token != webhook_token:
+        return 'invalid token', 401
 
-    if not link:
-        print('------------- EMPTY LINK ---------------')
-        return {'result': 'link empty'}, 200
+    try:
+        params = {"ID": deal_id}
+        method = "crm.deal.get"
+        deal = b.call(method, params)
 
-    print('------------- UPDATING ---------------')
+        if not deal['UF_CRM_1679160281']:
+            return {'result': 'link empty'}, 200
 
-    spreadsheet_id = link[39:83]
+        link = deal['UF_CRM_1679160281']
+        spreadsheet_id = link[39:83]
 
-    function_name = 'UpdateSheet'
-    parameters = [title, contract_num, customer, date, phone, address, subject, comments, spreadsheet_id, editor_email,
-                  viewer_email, helper_email]
-    execute_google_script(script_id, function_name, parameters)
+        function_name = 'UpdateSheet'
+        parameters = fetch_data(deal)
+        parameters.append(spreadsheet_id)
 
-    print('------------- UPDATE FINISHED ---------------')
+        result = execute_google_script(script_id, function_name, parameters)
 
-    return {'result': 'ok'}, 200
+        return {'result': 'ok'}, 200
+
+    except HttpError as error:
+        print(f"An error occurred: {error}")
+        return error
 
 
 @application.route('/hello', methods=['GET'])
@@ -130,7 +126,47 @@ def check_connection():
     return 'РАСЛ ШТАНЫ НАДУЛ'
 
 
-def execute_google_script(script_id, function_name, parameters):
+def fetch_data(deal):
+    params = {}
+    method = 'user.get'
+    email_list = {'editor': '', 'helper': '', 'viewer': ''}
+    contact_data = {'full_name': '', 'phone': ''}
+
+    if deal["UF_CRM_1679160353"]:
+        params["ID"] = deal["UF_CRM_1679160353"]
+        user = b.call(method, params)
+        email_list['editor'] = user['EMAIL']
+
+    if deal["UF_CRM_1679160378"]:
+        params["ID"] = deal["UF_CRM_1679160378"]
+        user = b.call(method, params)
+        email_list['helper'] = user['EMAIL']
+
+    if deal["UF_CRM_1679160402"]:
+        params["ID"] = deal["UF_CRM_1679160402"]
+        user = b.call(method, params)
+        email_list['viewer'] = user['EMAIL']
+
+    if deal["CONTACT_ID"]:
+        params["ID"] = deal["CONTACT_ID"]
+        method = 'crm.contact.get'
+        contact = b.call(method, params)
+        contact_data['full_name'] = f'{str(contact["NAME"] or "")} ' \
+                                    f'{str(contact["SECOND_NAME"] or "")} ' \
+                                    f'{str(contact["LAST_NAME"]) or ""} '
+        contact_data['phone'] = ' '.join([x['VALUE'] for x in contact['PHONE']])
+
+    contract_num = deal['UF_CRM_1679160251']
+    subject = deal['UF_CRM_1679160454']
+    comment = deal['UF_CRM_1679160464']
+    address = deal['UF_CRM_1679228043']
+
+    return [contract_num, contact_data['full_name'], contact_data['phone'],
+            address, subject, comment,
+            email_list['editor'], email_list['viewer'], email_list['helper']]
+
+
+def execute_google_script(s_id, function_name, parameters):
     # Authenticate and build the Google Scripts service
     service = build('script', 'v1', credentials=creds)
 
@@ -141,7 +177,7 @@ def execute_google_script(script_id, function_name, parameters):
         'devMode': True,
     }
 
-    response = service.scripts().run(scriptId=script_id, body=req).execute()
+    response = service.scripts().run(scriptId=s_id, body=req).execute()
 
     # Return the response from the Google Script function
     return response['response'].get('result')
